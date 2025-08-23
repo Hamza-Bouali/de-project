@@ -1,0 +1,93 @@
+###############################################
+# Clean .gitignore for de-project
+# Focus: keep source & flow YAMLs versioned while
+# ignoring local envs, secrets, build artifacts, data dumps.
+###############################################
+
+# --- Python cache / build ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+
+# --- Virtual environments ---
+myenv/
+.venv/
+venv/
+
+# --- Environment & secrets ---
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.crt
+*.pfx
+*.cer
+*.der
+*.jks
+*.keystore
+terraform_credentials.csv
+*credentials*.json
+
+# --- Docker compose (requested to ignore) ---
+docker-compose.yml
+docker-compose.*.yml
+
+# --- Terraform ---
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+*tfplan*
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfstate
+terraform.tfstate.backup
+tf-tuto/state
+tf-tuto/state.txt
+tf-tuto/MyPlan
+
+# --- Local data dumps ---
+nyTaxi_data/
+data/
+
+# --- Editor / OS ---
+.DS_Store
+.vscode/
+*.swp
+*.swo
+*.tmp
+*.log
+
+*.py
+.ipynb_checkpoints/
+scripts/
+homework/
+.vscode/
+# --- Misc scripts (keep tracked except secrets) ---
+# (We DO keep .sh scripts; remove the previous '*.sh' ignore to allow versioning.)
+
+# --- Notebooks ---
+# Keep Jupyter notebooks under version control (removed previous '*.ipynb').
+
+# --- Flow YAMLs ---
+# Keep flows/ directory tracked (removed previous 'flows/*').
+
+# --- DO NOT USE OVER-BROAD PATTERNS ---
+# Removed '.*' which blocked all dotfiles (including .gitignore/.github).
+
+# If you later want to ignore a specific secret JSON file, add it explicitly.
+
+terraform/
+
+*.ipynb

@@ -1,0 +1,205 @@
+id: taxi-to-postgresql-aws
+namespace: de-project
+
+
+labels:
+  owner: HAMZA-BOUALI
+  project: NYC-DATA-PIPELINE
+  environement: PROD
+
+inputs:
+  - id: taxi
+    type: SELECT
+    displayName: select the taxi type
+    values: [green, yellow]
+    defaults : green
+  
+  - id: year
+    type: INT
+    displayName: select the year
+    defaults: 2025
+    min: 2014
+    max: 2025
+  - id: month
+    type: INT
+    displayName: choose the month 
+    defaults: 5
+    max: 12
+    min: 1
+
+
+
+triggers:
+  - id: monthly_green
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 0 1 * *"
+    inputs:
+      taxi: "green"
+      year: "{{ trigger.date | date('yyyy') }}"
+      month: "{{ trigger.date | date('MM') }}"
+
+  - id: monthly_yellow
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 0 1 * *"
+    inputs:
+      taxi: "yellow"
+      year: "{{ trigger.date | date('yyyy') }}"
+      month: "{{ trigger.date | date('MM') }}"
+
+  
+    
+
+variables:
+  path: https://d37ci6vzurychx.cloudfront.net
+  file: "{{inputs.taxi}}_{{ inputs.month }}_{{ inputs.year }}-{{ (inputs.month < 10) ? ('0' ~ inputs.month):inputs.month }}.parquet"
+  url: jdbc:postgresql://postgres:5432/kestra
+  username: kestra
+  password: k3str4
+  currentTime: "{{execution.startDate | date('yyyy-MM-dd')}}"
+  csv: "{{ 'out_' ~ inputs.taxi ~ '_' ~ inputs.month ~ '-' ~ inputs.year ~ '.csv' }}"
+
+
+tasks:
+  
+
+  - id: extract
+    type: io.kestra.plugin.scripts.shell.Commands
+    outputFiles:
+      - "*.parquet"
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    commands:
+      - wget -q https://d37ci6vzurychx.cloudfront.net/trip-data/{{inputs.taxi}}_tripdata_{{inputs.year}}-{{(inputs.month < 10) ? ('0'~inputs.month):inputs.month}}.parquet -O {{render(vars.file)}}
+  
+  - id: pythonic_conversion
+    type: io.kestra.plugin.scripts.python.Script
+    script: |
+        import pandas as pd
+        df = pd.read_parquet('{{ outputs.extract.outputFiles[render(vars.file)] }}')
+        df.to_csv("{{ render(vars.csv) }}",index=False)
+    beforeCommands:
+      - pip install pandas pyarrow fastparquet
+    outputFiles:
+      - "*.csv"
+    inputFiles:
+      "{{ vars.file }}": "{{ outputs.extract.outputFiles[render(vars.file)] }}"
+  
+  - id: show_files
+    type: io.kestra.plugin.core.log.Log
+    message: "Produced files: {{ outputs.pythonic_conversion.outputFiles }}"
+  
+  - id: upload_to_s3
+    type: io.kestra.plugin.aws.s3.Upload
+    from: "{{outputs.pythonic_conversion.outputFiles[render(vars.csv)]}}"
+    key: "{{render(vars.csv)}}"
+
+
+
+  - id: if_yellow
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ inputs.taxi == 'yellow' }}"
+    then: 
+      - id: insert_data_to_yellow_table_redshift
+        type: io.kestra.plugin.jdbc.redshift.Queries
+        sql: |
+             CREATE TABLE IF NOT EXISTS "yellow_tripdata" (
+             "VendorID" INTEGER,
+             "tpep_pickup_datetime" TIMESTAMP,
+             "tpep_dropoff_datetime" TIMESTAMP,
+             "passenger_count" REAL,
+             "trip_distance" REAL,
+             "RatecodeID" REAL,
+             "store_and_fwd_flag" TEXT,
+             "PULocationID" INTEGER,
+             "DOLocationID" INTEGER,
+             "payment_type" INTEGER,
+             "fare_amount" REAL,
+             "extra" REAL,
+             "mta_tax" REAL,
+             "tip_amount" REAL,
+             "tolls_amount" REAL,
+             "improvement_surcharge" REAL,
+             "total_amount" REAL,
+             "congestion_surcharge" REAL,
+             "Airport_fee" REAL,
+             "cbd_congestion_fee" REAL);
+
+              COPY dev.public.yellow_tripdata 
+              FROM 's3://nyc-pipeline/{{render(vars.csv)}}' 
+              IAM_ROLE 'arn:aws:iam::982081071114:role/service-role/AmazonRedshift-CommandsAccessRole-20250823T152447' 
+              FORMAT AS CSV DELIMITER ',' 
+              QUOTE '"' 
+              IGNOREHEADER 1 
+              REGION AS '{{ kv('aws_region') }}';
+        
+
+
+  - id: if_green
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ inputs.taxi == 'green' }}"
+    then: 
+      - id: insert_data_to_green_table_redshift
+        type: io.kestra.plugin.jdbc.redshift.Queries
+        sql: |
+             CREATE TABLE IF NOT EXISTS "green_tripdata" (
+             "VendorID" INTEGER,
+             "lpep_pickup_datetime" TIMESTAMP,
+             "lpep_dropoff_datetime" TIMESTAMP,
+             "store_and_fwd_flag" TEXT,
+             "RatecodeID" REAL,
+             "PULocationID" INTEGER,
+             "DOLocationID" INTEGER,
+             "passenger_count" REAL,
+             "trip_distance" REAL,
+             "fare_amount" REAL,
+             "extra" REAL,
+             "mta_tax" REAL,
+             "tip_amount" REAL,
+             "tolls_amount" REAL,
+             "ehail_fee" REAL,
+             "improvement_surcharge" REAL,
+             "total_amount" REAL,
+             "payment_type" REAL,
+             "trip_type" REAL,
+             "congestion_surcharge" REAL,
+             "cbd_congestion_fee" REAL);
+
+             COPY dev.public.green_tripdata 
+              FROM 's3://nyc-pipeline/{{render(vars.csv)}}' 
+              IAM_ROLE 'arn:aws:iam::982081071114:role/service-role/AmazonRedshift-CommandsAccessRole-20250823T152447' 
+              FORMAT AS CSV DELIMITER ',' 
+              QUOTE '"' 
+              IGNOREHEADER 1 
+              REGION AS '{{ kv('aws_region') }}';
+
+      
+      
+      
+
+
+
+
+  - id: purge_files
+    type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
+
+
+
+
+pluginDefaults:
+    - type: io.kestra.plugin.jdbc.postgresql
+      values:
+        url: jdbc:postgresql://postgres:5432/kestra
+        username: kestra
+        password: k3str4
+    - type: io.kestra.plugin.aws
+      values:
+        accessKeyId: "{{ kv('access-key')}}"
+        secretKeyId: "{{ kv('secret-key')}}"
+        region: "{{ kv('aws_region')}}"
+        bucket: "{{ kv('bucket')}}"
+    - type: io.kestra.plugin.jdbc.redshift
+      values:
+        url: "{{kv('redshift_url')}}"
+        username: "{{ kv('redshift_username') }}"
+        password: "{{ kv('redshift_password') }}"
+
