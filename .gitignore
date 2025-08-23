@@ -91,3 +91,4 @@ homework/
 terraform/
 
 *.ipynb
+*.sh
