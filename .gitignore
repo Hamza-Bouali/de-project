@@ -103,8 +103,9 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 terraform/*
-!terraform/main.tf
 tf/*
+!terraform/main.tf
+
 
 *.ipynb
 *.sh
