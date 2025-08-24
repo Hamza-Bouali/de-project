@@ -2,9 +2,6 @@
 
 
 
-locals {
-      config_data = jsondecode(file("${path.module}/cred.json"))
-}
 
 
 
