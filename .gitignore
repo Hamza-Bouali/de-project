@@ -88,9 +88,22 @@ homework/
 
 # If you later want to ignore a specific secret JSON file, add it explicitly.
 
-terraform/
-!terraform/main.tf
 
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+*tfplan*
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform/*
+!terraform/main.tf
 
 *.ipynb
 *.sh
