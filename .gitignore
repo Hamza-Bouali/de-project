@@ -89,6 +89,8 @@ homework/
 # If you later want to ignore a specific secret JSON file, add it explicitly.
 
 terraform/
+!terraform/main.tf
+
 
 *.ipynb
 *.sh
