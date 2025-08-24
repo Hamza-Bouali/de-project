@@ -37,19 +37,29 @@ The Kestra flows perform the typical ETL steps for NYC taxi data:
 The following Mermaid diagram visualizes the `taks.yaml` flow: inputs, scheduled trigger, extraction, conversion, upload, conditional load to Redshift, and purge.
 
 ```mermaid
+%%{init: {"theme": "dark"}}%%
 flowchart LR
-	triggers[Triggers\n(monthly schedule)] --> inputs[Inputs\n(taxi, year, month)]
-	inputs --> extract[Extract\n(wget parquet)]
-	extract --> convert[Convert\n(parquet → CSV)\n(pandas, pyarrow)]
-	convert --> upload[Upload to S3]
-	upload --> branch{taxi == 'green'?}
-	branch -->|green| redshift_green[Redshift COPY\n-> green_tripdata]
-	branch -->|yellow| redshift_yellow[Redshift COPY\n-> yellow_tripdata]
-	redshift_green --> purge[Purge temporary files]
-	redshift_yellow --> purge
-	convert --> purge
-	classDef io fill:#f8f9fa,stroke:#333,stroke-width:1px
-	class triggers,inputs,extract,convert,upload,branch,redshift_green,redshift_yellow,purge io
+    triggers["Triggers (monthly schedule)"] --> inputs["Inputs (taxi, year, month)"]
+    inputs --> extract["Extract (wget parquet)"]
+    extract --> convert["Convert (parquet -> CSV) (pandas, pyarrow)"]
+    convert --> upload["Upload to S3"] & purge["Purge temporary files to optimize storage"]
+    upload --> branch{"color based decision"}
+    branch -- green --> redshift_green["Redshift COPY -> green_tripdata"]
+    branch -- yellow --> redshift_yellow["Redshift COPY -> yellow_tripdata"]
+    redshift_green --> purge
+    redshift_yellow --> purge
+
+    classDef io fill:#1e1e1e,stroke:#ffffff,color:#ffffff,stroke-width:2px;
+
+    triggers:::io
+    inputs:::io
+    extract:::io
+    convert:::io
+    upload:::io
+    purge:::io
+    branch:::io
+    redshift_green:::io
+    redshift_yellow:::io
 ```
 
 The `taks.yaml` flow demonstrates:
