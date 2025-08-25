@@ -229,8 +229,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 👨‍💻 Author
 
 **HAMZA-BOUALI**
-- Project: NYC-DATA-PIPELINE
-- Environment: PROD
+- Project: YG-PIPELINE
+- Environment: Ubuntu 22-LTS 
+
 
 ## 🐛 Troubleshooting
 
